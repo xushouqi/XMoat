@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2026
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XMoat.Service", "XMoat.Service\XMoat.Service.csproj", "{6526EA4F-6D7E-4697-BBF0-F0F5432DACAF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XMoat.Service", "XMoat.Service\XMoat.Service.csproj", "{6526EA4F-6D7E-4697-BBF0-F0F5432DACAF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XMoat.Common", "XMoat.Common\XMoat.Common.csproj", "{BA943043-0B28-4445-9D1D-FEA18083860A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XMoat.Common", "XMoat.Common\XMoat.Common.csproj", "{BA943043-0B28-4445-9D1D-FEA18083860A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ILRuntime", "ILRuntime\ILRuntime\ILRuntime.csproj", "{79EF2F29-89D1-4097-986C-5E4EEFE0FA33}"
 EndProject
@@ -19,7 +19,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mono.Cecil.Pdb", "ILRuntime
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ILRuntime", "ILRuntime", "{40C36C7F-F88A-43C7-A33F-4B74A8DDB7CD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XMoat.Hotfix", "XMoat.Hotfix\XMoat.Hotfix.csproj", "{79D1CAC8-D335-4726-AF7A-849F9D202B3B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XMoat.Hotfix", "XMoat.Hotfix\XMoat.Hotfix.csproj", "{79D1CAC8-D335-4726-AF7A-849F9D202B3B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

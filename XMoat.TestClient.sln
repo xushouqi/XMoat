@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2026
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XMoat.TestClient", "XMoat.TestClient\XMoat.TestClient.csproj", "{EAC9571E-1ECE-4BDB-8474-D9096A47C675}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XMoat.Common", "XMoat.Common\XMoat.Common.csproj", "{8591CBA4-1BB1-42E9-9FE1-7196C7E16D0B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EAC9571E-1ECE-4BDB-8474-D9096A47C675}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EAC9571E-1ECE-4BDB-8474-D9096A47C675}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EAC9571E-1ECE-4BDB-8474-D9096A47C675}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EAC9571E-1ECE-4BDB-8474-D9096A47C675}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8591CBA4-1BB1-42E9-9FE1-7196C7E16D0B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8591CBA4-1BB1-42E9-9FE1-7196C7E16D0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8591CBA4-1BB1-42E9-9FE1-7196C7E16D0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8591CBA4-1BB1-42E9-9FE1-7196C7E16D0B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5F23F12A-1605-456A-8CF0-9ACF0A45F63E}
+	EndGlobalSection
+EndGlobal

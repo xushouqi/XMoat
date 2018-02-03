@@ -8,6 +8,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using XMoat.Common;
+using System.Net;
 
 namespace XMoat.Service
 {
@@ -39,8 +41,14 @@ namespace XMoat.Service
 
             app.UseMvc();
 
-            var hotfixLoader = app.ApplicationServices.GetService<HotfixLoader>();
-            Task thot = hotfixLoader.Load();
+            var ipEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 1234);
+            var netcom = new NetworkComponent();
+            netcom.Awake(NetworkProtocol.KCP, ipEndPoint);
+
+
+
+            //var hotfixLoader = app.ApplicationServices.GetService<HotfixLoader>();
+            //Task thot = hotfixLoader.Load();
         }
     }
 }
