@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace XMoat.Common
 {
@@ -15,16 +16,16 @@ namespace XMoat.Common
         HEARTACK = 5,
     }
 
-    public class XService : AService
+    public class KService : AService
     {
         public uint IdGenerater = 10000;
-        public UdpClient client;
+        public UdpClient socket;
         public uint TimeNow;
 
         private TaskCompletionSource<AChannel> acceptTcs;
         private TaskCompletionSource<AChannel> connectTcs;
 
-        private readonly Dictionary<uint, XChannel> idChannels = new Dictionary<uint, XChannel>();
+        private readonly Dictionary<uint, KChannel> idChannels = new Dictionary<uint, KChannel>();
 
         // 下次时间更新的channel
         private readonly MultiMap<long, uint> timerMap = new MultiMap<long, uint>();
@@ -33,16 +34,16 @@ namespace XMoat.Common
         //待删除的channel
         private readonly Queue<uint> removedChannels = new Queue<uint>();
 
-        public XService(IPEndPoint ipEndPoint)
+        public KService(IPEndPoint ipEndPoint)
         {
             this.TimeNow = (uint)TimeHelper.Now();
-            this.client = new UdpClient(ipEndPoint);
+            this.socket = new UdpClient(ipEndPoint);
 
             const uint IOC_IN = 0x80000000;
             const uint IOC_VENDOR = 0x18000000;
             uint SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
             //解决问题"远程主机关闭一个现有连接"：Soket UDP 在进行发送的时候,导致异常,却在接收函数引发异常.
-            this.client.Client.IOControl((int)SIO_UDP_CONNRESET, new[] { Convert.ToByte(false) }, null);
+            this.socket.Client.IOControl((int)SIO_UDP_CONNRESET, new[] { Convert.ToByte(false) }, null);
 
             this.StartRecv();
 
@@ -54,14 +55,14 @@ namespace XMoat.Common
         {
             while (true)
             {
-                if (this.client == null)
+                if (this.socket == null)
                     return;
 
                 //接收数据
                 UdpReceiveResult udpReceiveResult;
                 try
                 {
-                    udpReceiveResult = await this.client.ReceiveAsync();
+                    udpReceiveResult = await this.socket.ReceiveAsync();
                 }
                 catch (Exception e)
                 {
@@ -76,7 +77,7 @@ namespace XMoat.Common
 
                 //数据包的类型/或channelId
                 uint ptype = BitConverter.ToUInt32(udpReceiveResult.Buffer, 0);
-                Log.Info($"StartRecv.ReceiveAsync: ptype={ptype}, messageLength={messageLength}");
+                Log.Info($"StartRecv.ReceiveAsync: thread={System.Threading.Thread.CurrentThread.ManagedThreadId}, ptype={ptype}, messageLength={messageLength}");
 
                 switch ((KcpProtocalType)ptype)
                 {
@@ -91,7 +92,7 @@ namespace XMoat.Common
                         //发送者的ID
                         uint remoteId = BitConverter.ToUInt32(udpReceiveResult.Buffer, 4);
 
-                        XChannel sChannel;
+                        KChannel sChannel;
                         // 如果已经连接上,则重新响应请求
                         if (this.idChannels.TryGetValue(remoteId, out sChannel))
                         {
@@ -103,16 +104,16 @@ namespace XMoat.Common
                         this.acceptTcs = null;
 
                         //创建新的channel
-                        sChannel = new XChannel(ChannelType.Accept, this, ++this.IdGenerater, udpReceiveResult.RemoteEndPoint, client);
+                        sChannel = new KChannel(ChannelType.Accept, this, ++this.IdGenerater, udpReceiveResult.RemoteEndPoint, socket);
                         //如已有同ID的channel，销毁旧的
-                        if (this.idChannels.TryGetValue(sChannel.Id, out XChannel oldChannel))
+                        if (this.idChannels.TryGetValue(sChannel.Id, out KChannel oldChannel))
                         {
                             this.idChannels.Remove(oldChannel.Id);
                             oldChannel.Dispose();
                         }
                         //记录channel
                         this.idChannels[sChannel.Id] = sChannel;
-                        Log.Debug($"StartRecv.KcpProtocalType.SYN: channelId={sChannel.Id}");
+                        Log.Debug($"StartRecv.KcpProtocalType.SYN: channelId={sChannel.Id}, thread={System.Threading.Thread.CurrentThread.ManagedThreadId}");
 
                         //向remote返回ACK
                         sChannel.HandleAccept(remoteId);
@@ -121,7 +122,7 @@ namespace XMoat.Common
                         tcs.SetResult(sChannel);
 
                         //test:开始接收
-                        sChannel.StartRecv();
+                        //sChannel.StartRecvAsync();
                         break;
                     case KcpProtocalType.ACK:
                         // 长度!=12，不是connect消息
@@ -130,10 +131,10 @@ namespace XMoat.Common
 
                         uint channelId = BitConverter.ToUInt32(udpReceiveResult.Buffer, 4);
                         uint tmpId = BitConverter.ToUInt32(udpReceiveResult.Buffer, 8);
-                        Log.Debug($"StartRecv.KcpProtocalType.ACK: tmpId={tmpId}, channelId={channelId}");
+                        Log.Debug($"StartRecv.KcpProtocalType.ACK: tmpId={tmpId}, channelId={channelId}, thread={System.Threading.Thread.CurrentThread.ManagedThreadId}");
 
                         //已有连接，
-                        if (this.idChannels.TryGetValue(tmpId, out XChannel aChannel))
+                        if (this.idChannels.TryGetValue(tmpId, out KChannel aChannel))
                         {
                             //处理chanel
                             aChannel.HandleConnnect(channelId);
@@ -145,6 +146,7 @@ namespace XMoat.Common
                             {
                                 connectTcs.SetResult(aChannel);
                                 connectTcs = null;
+                                Log.Debug($"KService.ConnectChannelAsync.Finish: channelId={aChannel.Id}, thread={System.Threading.Thread.CurrentThread.ManagedThreadId}");
                             }
                         }
                         break;
@@ -154,12 +156,12 @@ namespace XMoat.Common
                             break;
 
                         uint closeId = BitConverter.ToUInt32(udpReceiveResult.Buffer, 4);
-                        if (this.idChannels.TryGetValue(closeId, out XChannel fChannel))
+                        if (this.idChannels.TryGetValue(closeId, out KChannel fChannel))
                         {
                             // 处理chanel
                             this.idChannels.Remove(closeId);
                             fChannel.Dispose();
-                            Log.Debug($"StartRecv.KcpProtocalType.FIN: channelId={closeId}");
+                            Log.Debug($"StartRecv.KcpProtocalType.FIN: channelId={closeId}, thread={System.Threading.Thread.CurrentThread.ManagedThreadId}");
                         }
                         break;
                     case KcpProtocalType.HEART:
@@ -167,7 +169,7 @@ namespace XMoat.Common
                             break;
 
                         uint hId = BitConverter.ToUInt32(udpReceiveResult.Buffer, 4);
-                        if (this.idChannels.TryGetValue(hId, out XChannel hChannel))
+                        if (this.idChannels.TryGetValue(hId, out KChannel hChannel))
                         {
                             //回应
                             hChannel.HeartbeatAck(this.TimeNow);
@@ -178,14 +180,14 @@ namespace XMoat.Common
                             break;
 
                         uint haId = BitConverter.ToUInt32(udpReceiveResult.Buffer, 4);
-                        if (this.idChannels.TryGetValue(haId, out XChannel haChannel))
+                        if (this.idChannels.TryGetValue(haId, out KChannel haChannel))
                         {
                             haChannel.FinishHeartbeat(this.TimeNow);
                         }
                         break;
                     default:
                         var cid = ptype;
-                        if (this.idChannels.TryGetValue(cid, out XChannel rChannel))
+                        if (this.idChannels.TryGetValue(cid, out KChannel rChannel))
                         {
                             // 处理chanel
                             rChannel.HandleRecv(udpReceiveResult.Buffer, this.TimeNow);
@@ -195,11 +197,11 @@ namespace XMoat.Common
             }
         }
 
-        public override Task<AChannel> AcceptChannel()
+        public override async Task<AChannel> AcceptChannelAsync()
         {
             //等待传入连接请求
             acceptTcs = new TaskCompletionSource<AChannel>();
-            return this.acceptTcs.Task;
+            return await this.acceptTcs.Task;
         }
 
         /// <summary>
@@ -207,26 +209,23 @@ namespace XMoat.Common
         /// </summary>
         /// <param name="ipEndPoint"></param>
         /// <returns></returns>
-        public override AChannel ConnectChannel(IPEndPoint ipEndPoint)
-        {
-            //随机一个临时ID，连接成功后会被服务器替换
-            uint channelId = (uint)RandomHelper.RandomNumber(1000, int.MaxValue);
-            XChannel channel = new XChannel(ChannelType.Connect, this, channelId, ipEndPoint, this.client);
-            XChannel oldChannel;
-            if (this.idChannels.TryGetValue(channelId, out oldChannel))
-            {
-                this.idChannels.Remove(channelId);
-                oldChannel.Dispose();
-            }
-            this.idChannels[channelId] = channel;
-            return channel;
-        }
-        public Task<AChannel> ConnectChannelAsync(IPEndPoint ipEndPoint)
+        public override Task<AChannel> ConnectChannelAsync(IPEndPoint ipEndPoint)
         {
             if (connectTcs == null)
             {
                 connectTcs = new TaskCompletionSource<AChannel>();
-                ConnectChannel(ipEndPoint);
+                //随机一个临时ID，连接成功后会被服务器替换
+                uint channelId = (uint)RandomHelper.RandomNumber(1000, int.MaxValue);
+                KChannel channel = new KChannel(ChannelType.Connect, this, channelId, ipEndPoint, this.socket);
+                //将相同id的channel销毁???
+                KChannel oldChannel;
+                if (this.idChannels.TryGetValue(channelId, out oldChannel))
+                {
+                    this.idChannels.Remove(channelId);
+                    oldChannel.Dispose();
+                }
+                this.idChannels[channelId] = channel;
+                Log.Debug($"KService.ConnectChannelAsync.Start: channelId={channel.Id}, thread={System.Threading.Thread.CurrentThread.ManagedThreadId}");
                 return connectTcs.Task;
             }
             else
@@ -235,23 +234,23 @@ namespace XMoat.Common
 
         public override void Dispose()
         {
-            if (this.client != null)
+            if (this.socket != null)
             {
-                this.client.Close();
-                this.client = null;
+                this.socket.Close();
+                this.socket = null;
             }
         }
 
         public override AChannel GetChannel(uint channelId)
         {
-            XChannel channel;
+            KChannel channel;
             this.idChannels.TryGetValue(channelId, out channel);
             return channel;
         }
 
-        public override void Remove(uint channelId)
+        public override void RemoveChannel(uint channelId)
         {
-            XChannel channel = null;
+            KChannel channel = null;
             if (this.idChannels.TryGetValue(channelId, out channel))
             {
                 if (channel != null)
@@ -262,16 +261,23 @@ namespace XMoat.Common
             }
         }
 
-        private async void StartUpdate()
+        /// <summary>
+        /// test: 自循环Update，如有外部调用update，则无需如此
+        /// </summary>
+        public async void StartUpdate()
         {
-            while(true)
+            while (true)
             {
                 Update();
-                await Task.Delay(1);
+                var curTime = (uint)TimeHelper.Now();
+                //10毫秒update一次
+                var delay = Math.Max(1, 10 - (int)(curTime - this.TimeNow));
+                await Task.Delay(delay);
             }
         }
+
         public override void Update()
-        {
+        { 
             this.TimeNow = (uint)TimeHelper.Now();
 
             //定时update的channel
@@ -282,7 +288,7 @@ namespace XMoat.Common
                 if (kv.Key > TimeNow)
                     break;
 
-                List<uint> timeOutId = kv.Value;
+                var timeOutId = kv.Value;
                 //需要update的channel添加入列表
                 foreach (var id in timeOutId)
                     this.updateChannels.Add(id);
@@ -293,14 +299,14 @@ namespace XMoat.Common
             //需要update的channel
             foreach (var id in updateChannels)
             {
-                if (this.idChannels.TryGetValue(id, out XChannel kChannel))
+                if (this.idChannels.TryGetValue(id, out KChannel kChannel))
                 {
                     if (kChannel.Id > 0)
                         kChannel.Update(this.TimeNow);
                 }
             }
             this.updateChannels.Clear();
-            
+
             //待删除的channel
             while (this.removedChannels.Count > 0)
             {

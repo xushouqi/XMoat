@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using XMoat.Common;
 using System.Net;
+using System.Threading;
 
 namespace XMoat.Service
 {
@@ -41,11 +42,16 @@ namespace XMoat.Service
 
             app.UseMvc();
 
+            // 异步方法全部会回掉到主线程：KNet必须单线程！
+            //OneThreadSynchronizationContext contex = new OneThreadSynchronizationContext();
+            //SynchronizationContext.SetSynchronizationContext(contex);
+
             var ipEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 1234);
             var netcom = new NetworkComponent();
             netcom.Awake(NetworkProtocol.KCP, ipEndPoint);
 
-
+            //todo: 谁来调用Update???
+            //netcom.Update();
 
             //var hotfixLoader = app.ApplicationServices.GetService<HotfixLoader>();
             //Task thot = hotfixLoader.Load();

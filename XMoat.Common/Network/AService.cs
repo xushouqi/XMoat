@@ -14,11 +14,11 @@ namespace XMoat.Common
 	{
 		public abstract AChannel GetChannel(uint id);
 
-		public abstract Task<AChannel> AcceptChannel();
+		public abstract Task<AChannel> AcceptChannelAsync();
 
-		public abstract AChannel ConnectChannel(IPEndPoint ipEndPoint);
+		public abstract Task<AChannel> ConnectChannelAsync(IPEndPoint ipEndPoint);
 
-		public abstract void Remove(uint channelId);
+		public abstract void RemoveChannel(uint channelId);
 
 		public abstract void Update();
 

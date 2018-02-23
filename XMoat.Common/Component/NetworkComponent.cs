@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Net;
+using System.Net.Sockets;
+using System.Linq;
 
 namespace XMoat.Common
 {
@@ -9,6 +11,8 @@ namespace XMoat.Common
     {
         private AService service;
         public AService Service { get { return service; } }
+
+        private readonly Dictionary<long, Session> sessions = new Dictionary<long, Session>();
 
         /// <summary>
         /// 服务端绑定端口
@@ -22,10 +26,10 @@ namespace XMoat.Common
                 switch (protocol)
                 {
                     case NetworkProtocol.TCP:
-                        //this.service = new TService(ipEndPoint);
+                        this.service = new TService(ipEndPoint);
                         break;
                     case NetworkProtocol.KCP:
-                        this.service = new XService(ipEndPoint);
+                        this.service = new KService(ipEndPoint);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
@@ -42,28 +46,73 @@ namespace XMoat.Common
 
         private async void StartAccept()
         {
-            while (true)
+            while (this.Id > 0)
             {
-                //if (this.Id == 0)
-                //{
-                //    return;
-                //}
-
                 await this.Accept();
             }
         }
 
         public virtual async Task<AChannel> Accept()
         {
-            AChannel channel = await this.Service.AcceptChannel();
-            channel.ErrorCallback += (c, e) => { Log.Error($"ChannelError: {c.Id}: {e.ToString()}"); };
-            //Session session = EntityFactory.Create<Session, NetworkComponent, AChannel>(this, channel);
-            //channel.ErrorCallback += (c, e) => { this.Remove(session.Id); };
-            //this.sessions.Add(session.Id, session);
+            AChannel channel = await this.Service.AcceptChannelAsync();
+            Session session = new Session(this, channel);
+            this.AddSession(session);
+            channel.ErrorCallback += (c, e) => { this.RemoveSession(session.Id); };
+            channel.ErrorCallback += OnNetworkError;
             return channel;
         }
 
+        private void AddSession(Session session)
+        {
+            this.sessions.Add(session.Id, session);
+        }
+        public Session GetSession(long id)
+        {
+            Session session;
+            this.sessions.TryGetValue(id, out session);
+            return session;
+        }
+        public virtual void RemoveSession(long id)
+        {
+            Session session;
+            if (!this.sessions.TryGetValue(id, out session))
+            {
+                return;
+            }
+            this.sessions.Remove(id);
+            session.Dispose();
+        }
 
 
+        private void OnNetworkError(AChannel channel, SocketError error)
+        {
+            Log.Error($"ChannelError: {channel.Id}: {error.ToString()}");
+        }
+
+        public void Update()
+        {
+            if (this.Service == null)
+            {
+                return;
+            }
+            this.Service.Update();
+        }
+
+        public override void Dispose()
+        {
+            if (this.Id == 0)
+            {
+                return;
+            }
+
+            base.Dispose();
+
+            foreach (Session session in this.sessions.Values.ToArray())
+            {
+                session.Dispose();
+            }
+
+            this.Service.Dispose();
+        }
     }
 }

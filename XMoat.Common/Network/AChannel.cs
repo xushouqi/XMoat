@@ -24,9 +24,7 @@ namespace XMoat.Common
 	public abstract class AChannel: IDisposable
 	{
 		public uint Id { get; set; }
-
-		public ChannelType ChannelType { get; }
-
+        
 		protected AService service;
 
 		public IPEndPoint RemoteAddress { get; protected set; }
@@ -51,10 +49,9 @@ namespace XMoat.Common
 		}
 
 
-		protected AChannel(AService service, ChannelType channelType)
+		protected AChannel(AService service)
 		{
-			//this.Id = IdGenerater.GenerateId();
-			this.ChannelType = channelType;
+            this.Id = IdGenerater.GenerateId32();
 			this.service = service;
 		}
 		
@@ -80,7 +77,7 @@ namespace XMoat.Common
 			var id = this.Id;
 			this.Id = 0;
 
-			this.service.Remove(id);
+			this.service.RemoveChannel(id);
 		}
 	}
 }

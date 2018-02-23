@@ -7,9 +7,10 @@ using System.Linq;
 
 namespace XMoat.Common
 {
-    public class XChannel : AChannel
+    public class KChannel : AChannel
     {
         private UdpClient socket;
+        public UdpClient ClientSocket { get { return socket; } }
         private Kcp kcp;
 
         private readonly uint TimeoutSecs = 20;
@@ -34,9 +35,9 @@ namespace XMoat.Common
 
         private bool heartBeating = false;
 
-        private XService GetService()
+        private KService GetService()
         {
-            return (XService)this.service;
+            return (KService)this.service;
         }
 
         /// <summary>
@@ -46,7 +47,7 @@ namespace XMoat.Common
         /// <param name="id"></param>
         /// <param name="remoteEndPoint"></param>
         /// <param name="socket"></param>
-        public XChannel(ChannelType ctype, XService service, uint id, IPEndPoint remoteEndPoint, UdpClient socket) : base(service, ctype)
+        public KChannel(ChannelType ctype, KService service, uint id, IPEndPoint remoteEndPoint, UdpClient socket) : base(service)
         {
             this.Id = id;
             //this.RemoteId = remoteid;
@@ -55,14 +56,13 @@ namespace XMoat.Common
             this.parser = new PacketParser(this.recvBuffer);
             this.lastRecvTime = service.TimeNow;
             this.channelType = ctype;
-
             if (ctype == ChannelType.Connect)
             {
                 this.Connect(service.TimeNow);
             }
             else if (ctype == ChannelType.Accept)
             {
-                kcp = new Kcp(this.Id, this.Output);
+                kcp = new Kcp(this.Id, this.OnKcpSend);
                 kcp.SetMtu(512);
                 kcp.NoDelay(1, 10, 2, 1);  //fast
 
@@ -154,7 +154,7 @@ namespace XMoat.Common
 
             //id替换为服务端分配的
             this.Id = channelId;
-            this.kcp = new Kcp(channelId, this.Output);
+            this.kcp = new Kcp(channelId, this.OnKcpSend);
             kcp.SetMtu(512);
             kcp.NoDelay(1, 10, 2, 1);  //fast
 
@@ -196,6 +196,7 @@ namespace XMoat.Common
                 if (this.recvTcs != null)
                 {
                     bool isOK = this.parser.Parse();
+                    //数据包已接收完毕
                     if (isOK)
                     {
                         Packet packet = this.parser.GetPacket();
@@ -214,7 +215,7 @@ namespace XMoat.Common
             this.GetService().AddToUpdate(this.Id);
         }
 
-        void Output(byte[] data, int count)
+        void OnKcpSend(byte[] data, int count)
         {
             this.socket.Send(data, count, this.remoteEndPoint);
         }
@@ -254,46 +255,6 @@ namespace XMoat.Common
                 else
                 {
                     this.sendBuffer.Enqueue(buffer);
-                }
-            }
-        }
-
-        public async void StartRecv()
-        {
-            while (true)
-            {
-                if (this.Id == 0)
-                    return;
-
-                Packet packet;
-                try
-                {
-                    packet = await Recv();
-                    if (this.Id == 0)
-                        return;
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e.ToString());
-                    continue;
-                }
-
-                if (packet.Length < 2)
-                {
-                    Log.Error($"message error length < 2, ip: {this.RemoteAddress}");
-                    return;
-                }
-
-                //ushort opcode = BitConverter.ToUInt16(packet.Bytes, 0);
-                try
-                {
-                    var message = System.Text.Encoding.UTF8.GetString(packet.Bytes, 0, packet.Length);
-                    Log.Info(message);
-                    //this.RunDecompressedBytes(opcode, packet.Bytes, 2, packet.Length);
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e.ToString());
                 }
             }
         }

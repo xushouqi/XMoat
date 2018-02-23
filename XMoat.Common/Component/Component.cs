@@ -4,8 +4,22 @@ using System.Text;
 
 namespace XMoat.Common
 {
-    public class Component
+    public class Component : Disposer
     {
-        public int Id { get; set; }
+
+        protected Component()
+        {
+            //this.Id = 1;
+        }
+
+        public override void Dispose()
+        {
+            if (this.Id == 0)
+            {
+                return;
+            }
+
+            base.Dispose();
+        }
     }
 }

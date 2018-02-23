@@ -53,12 +53,13 @@ namespace XMoat.Common
                 switch (this.state)
                 {
                     case ParserState.PacketSize:
-                        if (this.buffer.Count < 2)
+                        if (this.buffer.TotalSize < 2)
                         {
                             finish = true;
                         }
                         else
                         {
+                            //头两个字节存长度
                             this.buffer.RecvFrom(this.packet.Bytes, 2);
                             this.packetSize = BitConverter.ToUInt16(this.packet.Bytes, 0);
                             if (packetSize > 60000)
@@ -69,7 +70,7 @@ namespace XMoat.Common
                         }
                         break;
                     case ParserState.PacketBody:
-                        if (this.buffer.Count < this.packetSize)
+                        if (this.buffer.TotalSize < this.packetSize)
                         {
                             finish = true;
                         }
