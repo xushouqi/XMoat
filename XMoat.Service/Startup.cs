@@ -43,13 +43,15 @@ namespace XMoat.Service
             app.UseMvc();
 
             // 异步方法全部会回掉到主线程：KNet必须单线程！
-            //OneThreadSynchronizationContext contex = new OneThreadSynchronizationContext();
-            //SynchronizationContext.SetSynchronizationContext(contex);
+            OneThreadSynchronizationContext contex = new OneThreadSynchronizationContext();
+            SynchronizationContext.SetSynchronizationContext(contex);
 
             var ipEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 1234);
             var netcom = new NetworkComponent();
             netcom.Awake(NetworkProtocol.KCP, ipEndPoint);
 
+
+            contex.Update();
             //todo: 谁来调用Update???
             //netcom.Update();
 
